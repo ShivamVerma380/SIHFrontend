@@ -12,6 +12,7 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,6 +29,7 @@ public class MainActivity extends AppCompatActivity {
 
     private EditText email;
     private Button verify;
+    private String otp = null;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -67,20 +69,45 @@ public class MainActivity extends AppCompatActivity {
 
 
                         Log.d("Before Response",request.toString());
-                        Response response = client.newCall(request).execute();
-                        Log.d("After response",response.toString());
-                        JSONObject jsonObject = new JSONObject(response.body().string());
-                        Log.d("json object",jsonObject.toString());
-                        String message = jsonObject.getString("message");
-                        String otp = jsonObject.getString("otp");
-                        Log.d("message",message);
-                        Log.d("otp",otp);
-                        if(otp!=null){
-                            Intent verifyIntent = new Intent(getApplicationContext(), OTPVerification.class);
-                            verifyIntent.putExtra("email",email.getText().toString());
-                            verifyIntent.putExtra("otp",otp);
-                            startActivity(verifyIntent);
-                        }
+
+                        client.newCall(request).enqueue(new Callback() {
+                            @Override
+                            public void onFailure(Call call, IOException e) {
+                                e.printStackTrace();
+
+                            }
+
+                            @Override
+                            public void onResponse(Call call, Response response) throws IOException {
+                                if(response.isSuccessful()){
+                                    try {
+                                        JSONObject jsonObject = new JSONObject(response.body().string());
+                                        String message = jsonObject.getString("message");
+                                        otp = jsonObject.getString("otp");
+
+                                        Log.d("message",message);
+                                        Log.d("otp",otp);
+                                    }catch (Exception e){
+                                        e.printStackTrace();
+                                        Log.d("In catch",""+e.getMessage());
+                                    }
+                                    MainActivity.this.runOnUiThread(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            if(otp!=null){
+                                                Intent verifyIntent = new Intent(getApplicationContext(), OTPVerification.class);
+                                                verifyIntent.putExtra("email",email.getText().toString());
+                                                verifyIntent.putExtra("otp",otp);
+                                                startActivity(verifyIntent);
+                                            }
+                                        }
+                                    });
+
+                                }
+                            }
+                        });
+
+
                     }catch (Exception e){
                         e.printStackTrace();
                         Log.d("In catch:",""+e.getMessage());
